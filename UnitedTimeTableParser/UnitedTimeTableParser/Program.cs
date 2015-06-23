@@ -151,6 +151,7 @@ namespace UnitedTimeTableParser
             Regex rgxFlightTime = new Regex(@"^([0-9]|0[0-9]|1[0-9]|2[0-3])H([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])M$");
             Regex rgxTimeZone = new Regex(@"^(?:Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$");
             Regex rgxAircraftCodes = new Regex(string.Join("|", _UnitedAircraftCode), RegexOptions.Compiled);
+            Regex rgxFlightDistance = new Regex(@"^(\d|,)*\d* mi");
             List<CIFLight> CIFLights = new List<CIFLight> { };
             List<Rectangle> rectangles = new List<Rectangle>();
 
@@ -320,31 +321,34 @@ namespace UnitedTimeTableParser
                                                 TEMP_FlightNumber = "UA" + rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim();
                                                 foreach (Match ItemTimeMatch in rgxtime.Matches(temp_string)) 
                                                 {
+                                                    string x = ItemTimeMatch.Value;
+                                                    x = x.Replace("A", " AM");
+                                                    x = x.Replace("P", " PM");
                                                     if (TEMP_DepartTime == DateTime.MinValue)
                                                         {
                                                             // tijd parsing                                                
-                                                            DateTime.TryParse(ItemTimeMatch.Value, out TEMP_DepartTime);
+                                                            //DateTime.TryParse(x, out TEMP_DepartTime);
+                                                            TEMP_DepartTime = DateTime.ParseExact(x, "h:mm tt", new System.Globalization.CultureInfo("en-US"), DateTimeStyles.None);
                                                             //DateTime.TryParseExact(temp_string, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out TEMP_DepartTime);
                                                         }
                                                     else
                                                         {
-                                                            // Er is al een waarde voor from dus dit is de to.
-                                                            string x = ItemTimeMatch.Value;
+                                                            // Er is al een waarde voor from dus dit is de to.                                                           
                                                             if (x.Contains("+1"))
                                                             {
                                                                 // Next day arrival
                                                                 x = x.Replace("+1", "");
                                                                 TEMP_FlightNextDays = 1;
                                                                 TEMP_FlightNextDayArrival = true;
-                                                            }                                                            
-                                                            DateTime.TryParse(x.Trim(), out TEMP_ArrivalTime);
+                                                            }
+                                                            TEMP_ArrivalTime = DateTime.ParseExact(x, "h:mm tt", new System.Globalization.CultureInfo("en-US"), DateTimeStyles.None); 
                                                         }
                                                 }
                                             
-                                                string departtime = rgxtime.Match(temp_string).Groups[0].Value;
-                                                string arrivaltime = rgxtime.Match(temp_string).Groups[2].Value;
-                                                DateTime.TryParse(rgxtime.Match(temp_string).Groups[1].Value, out TEMP_DepartTime);
-                                                DateTime.TryParse(rgxtime.Match(temp_string).Groups[2].Value, out TEMP_ArrivalTime);
+                                                //string departtime = rgxtime.Match(temp_string).Groups[0].Value;
+                                                //string arrivaltime = rgxtime.Match(temp_string).Groups[2].Value;
+                                                //DateTime.TryParse(rgxtime.Match(temp_string).Groups[1].Value, out TEMP_DepartTime);
+                                                //DateTime.TryParse(rgxtime.Match(temp_string).Groups[2].Value, out TEMP_ArrivalTime);
                                             }
                                         }
                                     }                                    
