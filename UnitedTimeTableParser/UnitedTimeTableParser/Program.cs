@@ -148,7 +148,7 @@ namespace UnitedTimeTableParser
             Regex rgxFlightDaysMonth = new Regex(@"(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)$");
             Regex rgxFlightDaysWeek = new Regex(@"(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)");
             Regex rgxdate1 = new Regex(@"(([0-9])|([0-2][0-9])|([3][0-1])) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)");            
-            Regex rgxFlightTime = new Regex(@"^([0-9]|0[0-9]|1[0-9]|2[0-3])H([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])M$");
+            Regex rgxFlightTime = new Regex(@"^([0-9]|0[0-9]|1[0-9]|2[0-3])H([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])M");
             Regex rgxTimeZone = new Regex(@"^(?:Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$");
             Regex rgxAircraftCodes = new Regex(string.Join("|", _UnitedAircraftCode), RegexOptions.Compiled);
             Regex rgxFlightDistance = new Regex(@"^(\d|,)*\d* mi");
@@ -313,8 +313,13 @@ namespace UnitedTimeTableParser
                                         // it the line with the route information
                                         if (rgxFlightDaysWeek.Matches(temp_string).Count > 0) {
                                             // Parse the individual week
+                                            int i = 0;
                                             foreach (Match ItemMatch in rgxFlightDaysWeek.Matches(temp_string))
                                             {
+                                                // From and To
+                                                TEMP_ValidFrom = new DateTime(2015, 6, 20);
+                                                TEMP_ValidTo = new DateTime(2015, 6, 26);
+                                                
                                                 string y = ItemMatch.Value;
                                                 // Aircraft parsing  
                                                 TEMP_Aircraftcode = rgxAircraftCodes.Match(temp_string).Groups[0].Value;
@@ -343,12 +348,17 @@ namespace UnitedTimeTableParser
                                                             }
                                                             TEMP_ArrivalTime = DateTime.ParseExact(x, "h:mm tt", new System.Globalization.CultureInfo("en-US"), DateTimeStyles.None); 
                                                         }
-                                                }
-                                            
-                                                //string departtime = rgxtime.Match(temp_string).Groups[0].Value;
-                                                //string arrivaltime = rgxtime.Match(temp_string).Groups[2].Value;
-                                                //DateTime.TryParse(rgxtime.Match(temp_string).Groups[1].Value, out TEMP_DepartTime);
-                                                //DateTime.TryParse(rgxtime.Match(temp_string).Groups[2].Value, out TEMP_ArrivalTime);
+                                                }  
+                                                // Day Parsing
+                                                if (y[0].ToString() == "S") { TEMP_FlightSaterday = true; }
+                                                if (y[1].ToString() == "S") { TEMP_FlightSunday = true; }
+                                                if (y[2].ToString() == "M") { TEMP_FlightMonday = true; }
+                                                if (y[3].ToString() == "T") { TEMP_FlightTuesday = true; }
+                                                if (y[4].ToString() == "W") { TEMP_FlightWednesday = true; }
+                                                if (y[5].ToString() == "T") { TEMP_FlightThursday = true; }
+                                                if (y[6].ToString() == "F") { TEMP_FlightFriday = true; }
+                                                // update i;
+                                                i = i++;
                                             }
                                         }
                                     }                                    
@@ -404,16 +414,8 @@ namespace UnitedTimeTableParser
                                     //        x = x.Replace(")", "");
                                     //        TEMP_FlightOperator = x;
                                     //    }
-                                    //}                                    
-                                    if (TEMP_DepartTime != DateTime.MinValue && TEMP_ArrivalTime != DateTime.MinValue && TEMP_ToUTC != null & TEMP_FromUTC != null)
-                                    {
-                                        // Calculate flight times
-                                        TimeSpan fromoffsettimespane = TimeSpan.Parse(TEMP_FromUTC.Replace("+", ""));
-                                        TimeSpan tooffsettimespane = TimeSpan.Parse(TEMP_ToUTC.Replace("+", ""));
-                                        DateTimeOffset departtimeOffset = new DateTimeOffset(TEMP_DepartTime, fromoffsettimespane);
-                                        DateTimeOffset arrivaltimeOffset = new DateTimeOffset(TEMP_ArrivalTime, tooffsettimespane);
-                                        TEMP_DurationTime = arrivaltimeOffset - departtimeOffset;
-                                    }
+                                    //}             
+                                    
 
                                     if (TEMP_Aircraftcode != null && TEMP_DurationTime != TimeSpan.MinValue)
                                     {
