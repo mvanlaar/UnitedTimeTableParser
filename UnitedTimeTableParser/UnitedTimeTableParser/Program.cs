@@ -54,7 +54,7 @@ namespace UnitedTimeTableParser
 
         public static readonly List<string> _UnitedAircraftCode = new List<string>() { "100", "318", "319", "320", "321", "32A", "32S", "330", "332", "333", "340", "343", "345", "346", "380", "388", "717", "733", "734", "735", "736", "737", "738", "739", "73C", "73G", "73H", "73J", "73W", "744", "747", "74E", "74H", "752", "753", "757", "762", "763", "764", "767", "772", "773", "777", "77L", "77W", "787", "788", "789", "AR1", "AR8", "AT5", "AT7", "ATR", "BE1", "BEH", "BNI", "BUS", "CNA", "CR1", "CR2", "CR7", "CR9", "CRA", "CRJ", "CRK", "DH1", "DH2", "DH3", "DH4", "DH8", "E70", "E75", "E7W", "E90", "E95", "EM2", "EMJ", "EQV", "ER3", "ER4", "ERD", "ERJ", "F70", "ICE", "M80", "M90", "S20", "SF3", "TRN" };
         public static readonly List<string> _LufthansaAirlineCode = new List<string>() { "LH", "LX", "2L", "9L", "A3", "AC", "AF", "AI", "AV", "AX", "B6", "BE", "C3", "CA", "CL", "CO", "EN", "ET", "EV", "EW", "F7", "G7", "IQ", "JJ", "JP", "K2", "KM", "LG", "LO", "LY", "MS", "NH", "NI", "NZ", "OL", "OO", "OS", "OU", "OZ", "PS", "PT", "QI", "QR", "S5", "SA", "SK", "SN", "SQ", "TA", "TG", "TK", "TP", "UA", "US", "VO", "WK", "YV", "2A" };
-        static List<AirlinesFlightNumbers> Airlines = new List<AirlinesFlightNumbers>
+        static List<AirlinesFlightNumbers> _Airlines = new List<AirlinesFlightNumbers>
         {
             new AirlinesFlightNumbers {From = 1, To = 1299, Airline = "United Airlines"},
             new AirlinesFlightNumbers {From = 1340, To = 1344, Airline = "ExpressJet-Extra Section"},
@@ -319,6 +319,10 @@ namespace UnitedTimeTableParser
                                                 // Aircraft parsing  
                                                 TEMP_Aircraftcode = rgxAircraftCodes.Match(temp_string).Groups[0].Value;
                                                 TEMP_FlightNumber = "UA" + rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim();
+                                                int flightnumber = Convert.ToInt32(rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim());
+                                                // Airline Parsing
+                                                var Airline = _Airlines.Find(item => (item.From <= flightnumber) && (item.To >= flightnumber)).Airline.ToString();
+                                                TEMP_FlightOperator = Airline;
                                                 foreach (Match ItemTimeMatch in rgxtime.Matches(temp_string)) 
                                                 {
                                                     string x = ItemTimeMatch.Value;
@@ -343,8 +347,7 @@ namespace UnitedTimeTableParser
                                                             }
                                                             TEMP_ArrivalTime = DateTime.ParseExact(x, "h:mm tt", new System.Globalization.CultureInfo("en-US"), DateTimeStyles.None); 
                                                         }
-                                                }
-                                            
+                                                }                                                
                                                 //string departtime = rgxtime.Match(temp_string).Groups[0].Value;
                                                 //string arrivaltime = rgxtime.Match(temp_string).Groups[2].Value;
                                                 //DateTime.TryParse(rgxtime.Match(temp_string).Groups[1].Value, out TEMP_DepartTime);
