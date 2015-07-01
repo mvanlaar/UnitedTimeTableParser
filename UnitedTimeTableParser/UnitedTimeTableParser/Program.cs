@@ -152,7 +152,7 @@ namespace UnitedTimeTableParser
             Regex rgxFlightTime = new Regex(@"(([0-9]|0[0-9]|1[0-9]|2[0-3])h)?([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])m");
             Regex rgxTimeZone = new Regex(@"^(?:Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$");
             Regex rgxAircraftCodes = new Regex(string.Join("|", _UnitedAircraftCode), RegexOptions.Compiled);
-            Regex rgxFlightDistance = new Regex(@"^(\d|,)*\d* mi");
+            Regex rgxFlightDistance = new Regex(@"(\d|,)*\d* mi");
             List<CIFLight> CIFLights = new List<CIFLight> { };
             List<Rectangle> rectangles = new List<Rectangle>();
 
@@ -263,6 +263,19 @@ namespace UnitedTimeTableParser
                         foreach (string line in lines)
                         {
                             string[] values = line.SplitWithQualifier(',', '\"', true);
+                             // New To:
+                            if (rgxIATAAirport.IsMatch(line) && rgxFlightDistance.IsMatch(line))
+                            {
+                                // New To
+                                TEMP_ToIATA = null;
+                                TEMP_ToIATA = rgxIATAAirport.Match(line).Groups[0].Value.Replace("(", "");
+                            }
+                            if (rgxIATAAirport.IsMatch(line) && !rgxFlightDistance.IsMatch(line))
+                            {
+                                // New From 
+                                TEMP_FromIATA = null;
+                                TEMP_FromIATA = rgxIATAAirport.Match(line).Groups[0].Value.Replace("(", "");
+                            }
 
                             foreach (string value in values)
                             {
@@ -277,30 +290,25 @@ namespace UnitedTimeTableParser
                                     //    System.Diagnostics.Debugger.Break();
                                     //}
 
-                                    // New To:
-                                    //if (line.Replace("\"", "") == temp_string && rgxTimeZone.IsMatch(temp_string))
-                                    //{
-                                    //    TEMP_FromIATA = null;
-                                    //    TEMP_ToIATA = null;
-                                    //    TEMP_ToUTC = null;
-                                    //    TEMP_FromUTC = null;
-                                    //}
+                                   
+                                    
                                                                         
                                     // From en To
-                                    if (rgxIATAAirport.Matches(temp_string).Count > 0)
-                                    {
-                                        if (String.IsNullOrEmpty(TEMP_FromIATA))
-                                        {
-                                            TEMP_FromIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
-                                        }
-                                        else
-                                        {
-                                            if (String.IsNullOrEmpty(TEMP_ToIATA) && !String.IsNullOrEmpty(TEMP_FromIATA))
-                                            {
-                                                TEMP_ToIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
-                                            }
-                                        }
-                                    }
+                                    //if (rgxIATAAirport.Matches(temp_string).Count > 0)
+                                    //{
+                                        
+                                    //    if (String.IsNullOrEmpty(TEMP_FromIATA))
+                                    //    {
+                                    //        TEMP_FromIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
+                                    //    }
+                                    //    else
+                                    //    {
+                                    //        if (String.IsNullOrEmpty(TEMP_ToIATA) && !String.IsNullOrEmpty(TEMP_FromIATA))
+                                    //        {
+                                    //            TEMP_ToIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
+                                    //        }
+                                    //    }
+                                    //}
                                     //if (temp_string == "®")
                                     //{
                                     //    // New To airport.
@@ -319,6 +327,7 @@ namespace UnitedTimeTableParser
                                                 TEMP_Aircraftcode = rgxAircraftCodes.Match(temp_string).Groups[0].Value;
                                                 TEMP_FlightNumber = "UA" + rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim();
                                                 int flightnumber = Convert.ToInt32(rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim());
+                                                if (flightnumber >= 1299) { TEMP_FlightCodeShare = true; }
                                                 // Airline Parsing
                                                 var Airline = _Airlines.Find(item => (item.From <= flightnumber) && (item.To >= flightnumber)).Airline.ToString();
                                                 TEMP_FlightOperator = Airline;
@@ -380,7 +389,7 @@ namespace UnitedTimeTableParser
                                                 {
                                                     // Aircraft code is gevonden, dit moet nu de vlucht tijd zijn. En dus de laatste waarde in de reeks.                                        
                                                     string TEMP_Airline = null;
-                                                    TEMP_Airline = TEMP_FlightNumber.Substring(0, 2);
+                                                    TEMP_Airline = TEMP_FlightNumber.Substring(0, 2);                                                    
 
                                                     CIFLights.Add(new CIFLight
                                                     {
