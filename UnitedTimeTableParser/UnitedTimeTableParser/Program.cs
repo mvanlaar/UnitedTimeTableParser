@@ -389,32 +389,38 @@ namespace UnitedTimeTableParser
                                                 {
                                                     // Aircraft code is gevonden, dit moet nu de vlucht tijd zijn. En dus de laatste waarde in de reeks.                                        
                                                     string TEMP_Airline = null;
-                                                    TEMP_Airline = TEMP_FlightNumber.Substring(0, 2);                                                    
-
-                                                    CIFLights.Add(new CIFLight
+                                                    TEMP_Airline = TEMP_FlightNumber.Substring(0, 2);
+                                                    if (TEMP_FlightMonday == false && TEMP_FlightTuesday == false && TEMP_FlightWednesday == false && TEMP_FlightThursday == false && TEMP_FlightFriday == false && TEMP_FlightSaterday == false && TEMP_FlightSunday == false)
                                                     {
-                                                        FromIATA = TEMP_FromIATA,
-                                                        ToIATA = TEMP_ToIATA,
-                                                        FromDate = ValidFrom,
-                                                        ToDate = ValidTo,
-                                                        ArrivalTime = TEMP_ArrivalTime,
-                                                        DepartTime = TEMP_DepartTime,
-                                                        FlightAircraft = TEMP_Aircraftcode,
-                                                        FlightAirline = TEMP_Airline,
-                                                        FlightMonday = TEMP_FlightMonday,
-                                                        FlightTuesday = TEMP_FlightTuesday,
-                                                        FlightWednesday = TEMP_FlightWednesday,
-                                                        FlightThursday = TEMP_FlightThursday,
-                                                        FlightFriday = TEMP_FlightFriday,
-                                                        FlightSaterday = TEMP_FlightSaterday,
-                                                        FlightSunday = TEMP_FlightSunday,
-                                                        FlightNumber = TEMP_FlightNumber,
-                                                        FlightOperator = TEMP_FlightOperator,
-                                                        FlightDuration = TEMP_DurationTime.ToString().Replace("-", ""),
-                                                        FlightCodeShare = TEMP_FlightCodeShare,
-                                                        FlightNextDayArrival = TEMP_FlightNextDayArrival,
-                                                        FlightNextDays = TEMP_FlightNextDays
-                                                    });
+                                                        Console.WriteLine("Flight without days skipped...");
+                                                    }
+                                                    else { 
+                                                        CIFLights.Add(new CIFLight
+                                                        {
+                                                            FromIATA = TEMP_FromIATA,
+                                                            ToIATA = TEMP_ToIATA,
+                                                            FromDate = ValidFrom,
+                                                            ToDate = ValidTo,
+                                                            ArrivalTime = TEMP_ArrivalTime,
+                                                            DepartTime = TEMP_DepartTime,
+                                                            FlightAircraft = TEMP_Aircraftcode,
+                                                            FlightAirline = TEMP_Airline,
+                                                            FlightMonday = TEMP_FlightMonday,
+                                                            FlightTuesday = TEMP_FlightTuesday,
+                                                            FlightWednesday = TEMP_FlightWednesday,
+                                                            FlightThursday = TEMP_FlightThursday,
+                                                            FlightFriday = TEMP_FlightFriday,
+                                                            FlightSaterday = TEMP_FlightSaterday,
+                                                            FlightSunday = TEMP_FlightSunday,
+                                                            FlightNumber = TEMP_FlightNumber,
+                                                            FlightOperator = TEMP_FlightOperator,
+                                                            FlightDuration = TEMP_DurationTime.ToString().Replace("-", ""),
+                                                            FlightCodeShare = TEMP_FlightCodeShare,
+                                                            FlightNextDayArrival = TEMP_FlightNextDayArrival,
+                                                            FlightNextDays = TEMP_FlightNextDays
+                                                        });
+                                                    }
+
                                                     // Cleaning All but From and To 
                                                     TEMP_ValidFrom = new DateTime();
                                                     TEMP_ValidTo = new DateTime();
