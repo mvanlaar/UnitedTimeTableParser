@@ -224,7 +224,7 @@ namespace UnitedTimeTableParser
                 int TEMP_FlightNextDays = 0;
                 string TEMP_FlightOperator = null;               
                 // Loop through each page of the document
-                for (var page = 15; page <= 15; page++)
+                for (var page = 15; page <= pdfReader.NumberOfPages; page++)
                 //for (var page = 3; page <= pdfReader.NumberOfPages; page++)
                 {
 
@@ -353,8 +353,17 @@ namespace UnitedTimeTableParser
                                                 int flightnumber = Convert.ToInt32(rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim());
                                                 if (flightnumber >= 1299) { TEMP_FlightCodeShare = true; }
                                                 // Airline Parsing
-                                                var Airline = _Airlines.Find(item => (item.From <= flightnumber) && (item.To >= flightnumber)).Airline.ToString();
-                                                TEMP_FlightOperator = Airline;
+                                                try
+                                                {
+                                                    var Airline = _Airlines.Find(item => (item.From <= flightnumber) && (item.To >= flightnumber)).Airline.ToString();
+                                                    TEMP_FlightOperator = Airline;
+                                                }
+                                                catch
+                                                {
+                                                    // Oops, that was exceptional.
+                                                    TEMP_FlightOperator = @"United Airlines - Unknown";
+                                                }
+                                                
                                                 // Flight Time Parsing
                                                 foreach (Match ItemTimeMatch in rgxtime.Matches(temp_string)) 
                                                 {
