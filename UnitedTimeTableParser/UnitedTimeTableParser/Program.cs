@@ -171,21 +171,21 @@ namespace UnitedTimeTableParser
                         height);
 
             var center = new Rectangle(
-                       150,
+                       300,
                        distanceInPixelsFromBottom,
-                       275,
+                       450,
                        height);
 
             var right = new Rectangle(
-                       280,
+                       550,
                        distanceInPixelsFromBottom,
                        612,
                        height);
 
 
             rectangles.Add(left);
-            //rectangles.Add(center);
-            //rectangles.Add(right);
+            rectangles.Add(center);
+            rectangles.Add(right);
 
             // The PdfReader object implements IDisposable.Dispose, so you can
             // wrap it in the using keyword to automatically dispose of it
@@ -287,7 +287,7 @@ namespace UnitedTimeTableParser
                                     // assuming C#
                                     //if (temp_string == "OS376")
                                     //{
-                                    //    System.Diagnostics.Debugger.Break();
+                                    //System.Diagnostics.Debugger.Break();
                                     //}
 
                                    
@@ -317,11 +317,35 @@ namespace UnitedTimeTableParser
 
                                     if (rgxFlightDaysMonth.Matches(temp_string).Count > 0)
                                     {
+                                        int dayset = 0;
                                         // it the line with the route information
                                         if (rgxFlightDaysWeek.Matches(temp_string).Count > 0) {
-                                            // Parse the individual week
+                                            // Parse the individual week                                            
                                             foreach (Match ItemMatch in rgxFlightDaysWeek.Matches(temp_string))
                                             {
+                                                // Week from to 
+
+                                                if (dayset == 0)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom;
+                                                    TEMP_ValidTo = ValidTo.AddDays(-21);
+                                                }
+                                                if (dayset == 1)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom.AddDays(7);
+                                                    TEMP_ValidTo = ValidTo.AddDays(-14);
+                                                }
+                                                if (dayset == 2)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom.AddDays(14);
+                                                    TEMP_ValidTo = ValidTo.AddDays(-7);
+                                                }
+                                                if (dayset == 3)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom.AddDays(21);
+                                                    TEMP_ValidTo = ValidTo;
+                                                }
+                                                
                                                 string y = ItemMatch.Value;
                                                 // Aircraft parsing  
                                                 TEMP_Aircraftcode = rgxAircraftCodes.Match(temp_string).Groups[0].Value;
@@ -399,8 +423,8 @@ namespace UnitedTimeTableParser
                                                         {
                                                             FromIATA = TEMP_FromIATA,
                                                             ToIATA = TEMP_ToIATA,
-                                                            FromDate = ValidFrom,
-                                                            ToDate = ValidTo,
+                                                            FromDate = TEMP_ValidFrom,
+                                                            ToDate = TEMP_ValidTo,
                                                             ArrivalTime = TEMP_ArrivalTime,
                                                             DepartTime = TEMP_DepartTime,
                                                             FlightAircraft = TEMP_Aircraftcode,
@@ -442,6 +466,7 @@ namespace UnitedTimeTableParser
                                                     TEMP_FlightNextDays = 0;
                                                     TEMP_FlightOperator = null;
                                                 }
+                                                dayset = dayset + 1;
                                             }
                                         }
                                     }                                    
