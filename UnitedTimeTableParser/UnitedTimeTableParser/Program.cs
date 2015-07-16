@@ -11,6 +11,8 @@ using PDFReader;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace UnitedTimeTableParser
 {
@@ -478,63 +480,7 @@ namespace UnitedTimeTableParser
                                                 dayset = dayset + 1;
                                             }
                                         }
-                                    }                                    
-                                    
-                                    //// Vertrek en aankomst tijden
-                                    //if (rgxtime.Matches(temp_string).Count > 0)
-                                    //{
-
-                                    //    if (TEMP_DepartTime == DateTime.MinValue)
-                                    //    {
-                                    //        // tijd parsing                                                
-                                    //        DateTime.TryParse(temp_string.Trim(), out TEMP_DepartTime);
-                                    //        //DateTime.TryParseExact(temp_string, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out TEMP_DepartTime);
-                                    //    }
-                                    //    else
-                                    //    {
-                                    //        // Er is al een waarde voor from dus dit is de to.
-                                    //        string x = temp_string;
-                                    //        if (x.Contains("+"))
-                                    //        {
-                                    //            // Next day arrival
-                                    //            x = x.Replace("+", "");
-                                    //            TEMP_FlightNextDays = 1;
-                                    //            TEMP_FlightNextDayArrival = true;
-                                    //        }
-                                    //        // Multiple airport places.
-                                    //        if (Regex.Matches(x, "[A-Z]").Count > 0)
-                                    //        {
-                                    //            //Lette found replace to with different airport
-                                    //            string z = null;
-                                    //            z = Regex.Match(x, "[A-Z]").Groups[0].Value;
-                                    //            var item = Airports.Find(q => q.Letter == z);
-                                    //            TEMP_ToIATA = item.IATA;
-                                    //            x = x.Replace(z, "");
-                                    //        }
-                                    //        DateTime.TryParse(x.Trim(), out TEMP_ArrivalTime);
-                                    //    }
-                                    //}
-                                    //// FlightNumber Parsing
-                                    //if (rgxFlightNumber.IsMatch(temp_string) && !_LufthansaAircraftCode.Contains(temp_string, StringComparer.OrdinalIgnoreCase))
-                                    //{
-                                    //    // Only Main FlightNumber
-                                    //    TEMP_FlightNumber = rgxFlightNumberPri.Match(temp_string).Groups[0].Value;
-
-                                    //    // Code Share flight
-                                    //    if (rgxFlightNumberCodeShare.IsMatch(temp_string))
-                                    //    {
-                                    //        // Code Share Flight
-                                    //        string x = null;
-                                    //        TEMP_FlightCodeShare = true;
-                                    //        x = rgxFlightNumberCodeShare.Match(temp_string).Groups[0].Value;
-                                    //        x = x.Replace("(", "");
-                                    //        x = x.Replace(")", "");
-                                    //        TEMP_FlightOperator = x;
-                                    //    }
-                                    //}                                    
-
-                                    
-                                    Console.WriteLine(value);
+                                    }  
                                 }
                             }
                         }
@@ -561,7 +507,61 @@ namespace UnitedTimeTableParser
             file.Close();
 
             //Console.ReadKey();
+            Console.WriteLine("Insert into Database...");
+            for (int i = 0; i < CIFLights.Count; i++) // Loop through List with for)
+            {
+                using (SqlConnection connection = new SqlConnection("Server=(local);Database=CI-Import;Trusted_Connection=True;"))
+                {
+                    using (SqlCommand command = new SqlCommand())
+                    {
+                        command.Connection = connection;            // <== lacking
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.CommandText = "InsertFlight";
+                        command.Parameters.Add(new SqlParameter("@FlightSource", "United"));
+                        command.Parameters.Add(new SqlParameter("@FromIATA", CIFLights[i].FromIATA));
+                        command.Parameters.Add(new SqlParameter("@ToIATA", CIFLights[i].ToIATA));
+                        command.Parameters.Add(new SqlParameter("@FromDate", CIFLights[i].FromDate));
+                        command.Parameters.Add(new SqlParameter("@ToDate", CIFLights[i].ToDate));
+                        command.Parameters.Add(new SqlParameter("@FlightMonday", CIFLights[i].FlightMonday));
+                        command.Parameters.Add(new SqlParameter("@FlightTuesday", CIFLights[i].FlightTuesday));
+                        command.Parameters.Add(new SqlParameter("@FlightWednesday", CIFLights[i].FlightWednesday));
+                        command.Parameters.Add(new SqlParameter("@FlightThursday", CIFLights[i].FlightThursday));
+                        command.Parameters.Add(new SqlParameter("@FlightFriday", CIFLights[i].FlightFriday));
+                        command.Parameters.Add(new SqlParameter("@FlightSaterday", CIFLights[i].FlightSaterday));
+                        command.Parameters.Add(new SqlParameter("@FlightSunday", CIFLights[i].FlightSunday));
+                        command.Parameters.Add(new SqlParameter("@DepartTime", CIFLights[i].DepartTime));
+                        command.Parameters.Add(new SqlParameter("@ArrivalTime", CIFLights[i].ArrivalTime));
+                        command.Parameters.Add(new SqlParameter("@FlightNumber", CIFLights[i].FlightNumber));
+                        command.Parameters.Add(new SqlParameter("@FlightAirline", CIFLights[i].FlightAirline));
+                        command.Parameters.Add(new SqlParameter("@FlightOperator", CIFLights[i].FlightOperator));
+                        command.Parameters.Add(new SqlParameter("@FlightAircraft", CIFLights[i].FlightAircraft));
+                        command.Parameters.Add(new SqlParameter("@FlightCodeShare", CIFLights[i].FlightCodeShare));
+                        command.Parameters.Add(new SqlParameter("@FlightNextDayArrival", CIFLights[i].FlightNextDayArrival));
+                        command.Parameters.Add(new SqlParameter("@FlightDuration", CIFLights[i].FlightDuration));
+                        command.Parameters.Add(new SqlParameter("@FlightNextDays", CIFLights[i].FlightNextDays));
+                        foreach (SqlParameter parameter in command.Parameters)
+                        {
+                            if (parameter.Value == null)
+                            {
+                                parameter.Value = DBNull.Value;
+                            }
+                        }
 
+
+                        try
+                        {
+                            connection.Open();
+                            int recordsAffected = command.ExecuteNonQuery();
+                        }
+
+                        finally
+                        {
+                            connection.Close();
+                        }
+                    }
+                }
+
+            }
 
 
         }
