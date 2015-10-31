@@ -11,6 +11,8 @@ using PDFReader;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace UnitedTimeTableParser
 {
@@ -54,7 +56,7 @@ namespace UnitedTimeTableParser
 
         public static readonly List<string> _UnitedAircraftCode = new List<string>() { "100", "318", "319", "320", "321", "32A", "32S", "330", "332", "333", "340", "343", "345", "346", "380", "388", "717", "733", "734", "735", "736", "737", "738", "739", "73C", "73G", "73H", "73J", "73W", "744", "747", "74E", "74H", "752", "753", "757", "762", "763", "764", "767", "772", "773", "777", "77L", "77W", "787", "788", "789", "AR1", "AR8", "AT5", "AT7", "ATR", "BE1", "BEH", "BNI", "BUS", "CNA", "CR1", "CR2", "CR7", "CR9", "CRA", "CRJ", "CRK", "DH1", "DH2", "DH3", "DH4", "DH8", "E70", "E75", "E7W", "E90", "E95", "EM2", "EMJ", "EQV", "ER3", "ER4", "ERD", "ERJ", "F70", "ICE", "M80", "M90", "S20", "SF3", "TRN" };
         public static readonly List<string> _LufthansaAirlineCode = new List<string>() { "LH", "LX", "2L", "9L", "A3", "AC", "AF", "AI", "AV", "AX", "B6", "BE", "C3", "CA", "CL", "CO", "EN", "ET", "EV", "EW", "F7", "G7", "IQ", "JJ", "JP", "K2", "KM", "LG", "LO", "LY", "MS", "NH", "NI", "NZ", "OL", "OO", "OS", "OU", "OZ", "PS", "PT", "QI", "QR", "S5", "SA", "SK", "SN", "SQ", "TA", "TG", "TK", "TP", "UA", "US", "VO", "WK", "YV", "2A" };
-        static List<AirlinesFlightNumbers> Airlines = new List<AirlinesFlightNumbers>
+        static List<AirlinesFlightNumbers> _Airlines = new List<AirlinesFlightNumbers>
         {
             new AirlinesFlightNumbers {From = 1, To = 1299, Airline = "United Airlines"},
             new AirlinesFlightNumbers {From = 1340, To = 1344, Airline = "ExpressJet-Extra Section"},
@@ -117,6 +119,7 @@ namespace UnitedTimeTableParser
             new AirlinesFlightNumbers {From = 6829, To = 6848, Airline = "LOT-Polish Airlines"},
             new AirlinesFlightNumbers {From = 6974, To = 7073, Airline = "SAS - Scandinavian Airlines"},
             new AirlinesFlightNumbers {From = 7074, To = 7173, Airline = "Copa Airlines"},
+            new AirlinesFlightNumbers {From = 7174, To = 7223, Airline = "Ethiopian Airlines"},
             new AirlinesFlightNumbers {From = 7224, To = 7253, Airline = "South African Airways"},
             new AirlinesFlightNumbers {From = 7254, To = 7283, Airline = "Croatia Airlines"},
             new AirlinesFlightNumbers {From = 7284, To = 7323, Airline = "Asiana"},
@@ -148,10 +151,10 @@ namespace UnitedTimeTableParser
             Regex rgxFlightDaysMonth = new Regex(@"(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)$");
             Regex rgxFlightDaysWeek = new Regex(@"(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)");
             Regex rgxdate1 = new Regex(@"(([0-9])|([0-2][0-9])|([3][0-1])) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)");            
-            Regex rgxFlightTime = new Regex(@"^([0-9]|0[0-9]|1[0-9]|2[0-3])H([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])M");
+            Regex rgxFlightTime = new Regex(@"(([0-9]|0[0-9]|1[0-9]|2[0-3])h)?([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])m");
             Regex rgxTimeZone = new Regex(@"^(?:Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$");
             Regex rgxAircraftCodes = new Regex(string.Join("|", _UnitedAircraftCode), RegexOptions.Compiled);
-            Regex rgxFlightDistance = new Regex(@"^(\d|,)*\d* mi");
+            Regex rgxFlightDistance = new Regex(@"(\d|,)*\d* mi");
             List<CIFLight> CIFLights = new List<CIFLight> { };
             List<Rectangle> rectangles = new List<Rectangle>();
 
@@ -170,21 +173,21 @@ namespace UnitedTimeTableParser
                         height);
 
             var center = new Rectangle(
-                       150,
+                       300,
                        distanceInPixelsFromBottom,
-                       275,
+                       450,
                        height);
 
             var right = new Rectangle(
-                       280,
+                       550,
                        distanceInPixelsFromBottom,
                        612,
                        height);
 
 
             rectangles.Add(left);
-            //rectangles.Add(center);
-            //rectangles.Add(right);
+            rectangles.Add(center);
+            rectangles.Add(right);
 
             // The PdfReader object implements IDisposable.Dispose, so you can
             // wrap it in the using keyword to automatically dispose of it
@@ -221,11 +224,9 @@ namespace UnitedTimeTableParser
                 TimeSpan TEMP_DurationTime = TimeSpan.MinValue;
                 Boolean TEMP_FlightNextDayArrival = false;
                 int TEMP_FlightNextDays = 0;
-                string TEMP_FlightOperator = null;
-                string TEMP_FromUTC = null;
-                string TEMP_ToUTC = null;
+                string TEMP_FlightOperator = null;               
                 // Loop through each page of the document
-                for (var page = 15; page <= 15; page++)
+                for (var page = 15; page <= pdfReader.NumberOfPages; page++)
                 //for (var page = 3; page <= pdfReader.NumberOfPages; page++)
                 {
 
@@ -264,6 +265,19 @@ namespace UnitedTimeTableParser
                         foreach (string line in lines)
                         {
                             string[] values = line.SplitWithQualifier(',', '\"', true);
+                             // New To:
+                            if (rgxIATAAirport.IsMatch(line) && rgxFlightDistance.IsMatch(line))
+                            {
+                                // New To
+                                TEMP_ToIATA = null;
+                                TEMP_ToIATA = rgxIATAAirport.Match(line).Groups[0].Value.Replace("(", "");
+                            }
+                            if (rgxIATAAirport.IsMatch(line) && !rgxFlightDistance.IsMatch(line))
+                            {
+                                // New From 
+                                TEMP_FromIATA = null;
+                                TEMP_FromIATA = rgxIATAAirport.Match(line).Groups[0].Value.Replace("(", "");
+                            }
 
                             foreach (string value in values)
                             {
@@ -275,33 +289,28 @@ namespace UnitedTimeTableParser
                                     // assuming C#
                                     //if (temp_string == "OS376")
                                     //{
-                                    //    System.Diagnostics.Debugger.Break();
+                                    //System.Diagnostics.Debugger.Break();
                                     //}
 
-                                    // New To:
-                                    //if (line.Replace("\"", "") == temp_string && rgxTimeZone.IsMatch(temp_string))
-                                    //{
-                                    //    TEMP_FromIATA = null;
-                                    //    TEMP_ToIATA = null;
-                                    //    TEMP_ToUTC = null;
-                                    //    TEMP_FromUTC = null;
-                                    //}
+                                   
+                                    
                                                                         
                                     // From en To
-                                    if (rgxIATAAirport.Matches(temp_string).Count > 0)
-                                    {
-                                        if (String.IsNullOrEmpty(TEMP_FromIATA))
-                                        {
-                                            TEMP_FromIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
-                                        }
-                                        else
-                                        {
-                                            if (String.IsNullOrEmpty(TEMP_ToIATA) && !String.IsNullOrEmpty(TEMP_FromIATA))
-                                            {
-                                                TEMP_ToIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
-                                            }
-                                        }
-                                    }
+                                    //if (rgxIATAAirport.Matches(temp_string).Count > 0)
+                                    //{
+                                        
+                                    //    if (String.IsNullOrEmpty(TEMP_FromIATA))
+                                    //    {
+                                    //        TEMP_FromIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
+                                    //    }
+                                    //    else
+                                    //    {
+                                    //        if (String.IsNullOrEmpty(TEMP_ToIATA) && !String.IsNullOrEmpty(TEMP_FromIATA))
+                                    //        {
+                                    //            TEMP_ToIATA = rgxIATAAirport.Match(temp_string).Groups[0].Value.Replace("(", "");
+                                    //        }
+                                    //    }
+                                    //}
                                     //if (temp_string == "®")
                                     //{
                                     //    // New To airport.
@@ -310,20 +319,54 @@ namespace UnitedTimeTableParser
 
                                     if (rgxFlightDaysMonth.Matches(temp_string).Count > 0)
                                     {
+                                        int dayset = 0;
                                         // it the line with the route information
                                         if (rgxFlightDaysWeek.Matches(temp_string).Count > 0) {
-                                            // Parse the individual week
-                                            int i = 0;
+                                            // Parse the individual week                                            
                                             foreach (Match ItemMatch in rgxFlightDaysWeek.Matches(temp_string))
                                             {
-                                                // From and To
-                                                TEMP_ValidFrom = new DateTime(2015, 6, 20);
-                                                TEMP_ValidTo = new DateTime(2015, 6, 26);
+                                                // Week from to 
+
+                                                if (dayset == 0)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom;
+                                                    TEMP_ValidTo = ValidTo.AddDays(-21);
+                                                }
+                                                if (dayset == 1)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom.AddDays(7);
+                                                    TEMP_ValidTo = ValidTo.AddDays(-14);
+                                                }
+                                                if (dayset == 2)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom.AddDays(14);
+                                                    TEMP_ValidTo = ValidTo.AddDays(-7);
+                                                }
+                                                if (dayset == 3)
+                                                {
+                                                    TEMP_ValidFrom = ValidFrom.AddDays(21);
+                                                    TEMP_ValidTo = ValidTo;
+                                                }
                                                 
                                                 string y = ItemMatch.Value;
                                                 // Aircraft parsing  
                                                 TEMP_Aircraftcode = rgxAircraftCodes.Match(temp_string).Groups[0].Value;
                                                 TEMP_FlightNumber = "UA" + rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim();
+                                                int flightnumber = Convert.ToInt32(rgxFlightNumber.Match(temp_string).Groups[0].Value.Trim());
+                                                if (flightnumber >= 1299) { TEMP_FlightCodeShare = true; }
+                                                // Airline Parsing
+                                                try
+                                                {
+                                                    var Airline = _Airlines.Find(item => (item.From <= flightnumber) && (item.To >= flightnumber)).Airline.ToString();
+                                                    TEMP_FlightOperator = Airline;
+                                                }
+                                                catch
+                                                {
+                                                    // Oops, that was exceptional.
+                                                    TEMP_FlightOperator = @"United Airlines - Unknown";
+                                                }
+                                                
+                                                // Flight Time Parsing
                                                 foreach (Match ItemTimeMatch in rgxtime.Matches(temp_string)) 
                                                 {
                                                     string x = ItemTimeMatch.Value;
@@ -348,8 +391,8 @@ namespace UnitedTimeTableParser
                                                             }
                                                             TEMP_ArrivalTime = DateTime.ParseExact(x, "h:mm tt", new System.Globalization.CultureInfo("en-US"), DateTimeStyles.None); 
                                                         }
-                                                }  
-                                                // Day Parsing
+                                                }
+                                                // Flight day parsing.
                                                 if (y[0].ToString() == "S") { TEMP_FlightSaterday = true; }
                                                 if (y[1].ToString() == "S") { TEMP_FlightSunday = true; }
                                                 if (y[2].ToString() == "M") { TEMP_FlightMonday = true; }
@@ -357,118 +400,87 @@ namespace UnitedTimeTableParser
                                                 if (y[4].ToString() == "W") { TEMP_FlightWednesday = true; }
                                                 if (y[5].ToString() == "T") { TEMP_FlightThursday = true; }
                                                 if (y[6].ToString() == "F") { TEMP_FlightFriday = true; }
-                                                // update i;
-                                                i = i++;
+                                                // Duration parsing
+                                                if (rgxFlightTime.Matches(temp_string).Count > 0)
+                                                {
+                                                    int intFlightTimeH = 0; 
+                                                    int intFlightTimeM = 0; 
+                                                    var match = rgxFlightTime.Match(temp_string);                                                    
+                                                    if (rgxFlightTime.Match(temp_string).Value.Contains("h"))
+                                                    {
+                                                        string matchgroup1 = match.Groups[2].Value;
+                                                        string matchgroup2 = match.Groups[3].Value;
+                                                        intFlightTimeH = int.Parse(match.Groups[2].Value);
+                                                        intFlightTimeM = int.Parse(match.Groups[3].Value);
+                                                    }
+                                                    else
+                                                    {                                                        
+                                                        intFlightTimeM = int.Parse(match.Groups[0].Value.Replace("m",""));
+                                                    }
+                                                    TEMP_DurationTime = new TimeSpan(0, intFlightTimeH, intFlightTimeM, 0);
+
+                                                }
+                                                if (TEMP_Aircraftcode != null && TEMP_DurationTime != TimeSpan.MinValue)
+                                                {
+                                                    // Aircraft code is gevonden, dit moet nu de vlucht tijd zijn. En dus de laatste waarde in de reeks.                                        
+                                                    string TEMP_Airline = null;
+                                                    TEMP_Airline = TEMP_FlightNumber.Substring(0, 2);
+                                                    if (TEMP_FlightMonday == false && TEMP_FlightTuesday == false && TEMP_FlightWednesday == false && TEMP_FlightThursday == false && TEMP_FlightFriday == false && TEMP_FlightSaterday == false && TEMP_FlightSunday == false)
+                                                    {
+                                                        Console.WriteLine("Flight without days skipped...");
+                                                    }
+                                                    else { 
+                                                        CIFLights.Add(new CIFLight
+                                                        {
+                                                            FromIATA = TEMP_FromIATA,
+                                                            ToIATA = TEMP_ToIATA,
+                                                            FromDate = TEMP_ValidFrom,
+                                                            ToDate = TEMP_ValidTo,
+                                                            ArrivalTime = TEMP_ArrivalTime,
+                                                            DepartTime = TEMP_DepartTime,
+                                                            FlightAircraft = TEMP_Aircraftcode,
+                                                            FlightAirline = TEMP_Airline,
+                                                            FlightMonday = TEMP_FlightMonday,
+                                                            FlightTuesday = TEMP_FlightTuesday,
+                                                            FlightWednesday = TEMP_FlightWednesday,
+                                                            FlightThursday = TEMP_FlightThursday,
+                                                            FlightFriday = TEMP_FlightFriday,
+                                                            FlightSaterday = TEMP_FlightSaterday,
+                                                            FlightSunday = TEMP_FlightSunday,
+                                                            FlightNumber = TEMP_FlightNumber,
+                                                            FlightOperator = TEMP_FlightOperator,
+                                                            FlightDuration = TEMP_DurationTime.ToString().Replace("-", ""),
+                                                            FlightCodeShare = TEMP_FlightCodeShare,
+                                                            FlightNextDayArrival = TEMP_FlightNextDayArrival,
+                                                            FlightNextDays = TEMP_FlightNextDays
+                                                        });
+                                                    }
+
+                                                    // Cleaning All but From and To 
+                                                    TEMP_ValidFrom = new DateTime();
+                                                    TEMP_ValidTo = new DateTime();
+                                                    TEMP_Conversie = 0;
+                                                    TEMP_FlightMonday = false;
+                                                    TEMP_FlightTuesday = false;
+                                                    TEMP_FlightWednesday = false;
+                                                    TEMP_FlightThursday = false;
+                                                    TEMP_FlightFriday = false;
+                                                    TEMP_FlightSaterday = false;
+                                                    TEMP_FlightSunday = false;
+                                                    TEMP_DepartTime = new DateTime();
+                                                    TEMP_ArrivalTime = new DateTime();
+                                                    TEMP_FlightNumber = null;
+                                                    TEMP_Aircraftcode = null;
+                                                    TEMP_DurationTime = TimeSpan.MinValue;
+                                                    TEMP_FlightCodeShare = false;
+                                                    TEMP_FlightNextDayArrival = false;
+                                                    TEMP_FlightNextDays = 0;
+                                                    TEMP_FlightOperator = null;
+                                                }
+                                                dayset = dayset + 1;
                                             }
                                         }
-                                    }                                    
-                                    
-                                    //// Vertrek en aankomst tijden
-                                    //if (rgxtime.Matches(temp_string).Count > 0)
-                                    //{
-
-                                    //    if (TEMP_DepartTime == DateTime.MinValue)
-                                    //    {
-                                    //        // tijd parsing                                                
-                                    //        DateTime.TryParse(temp_string.Trim(), out TEMP_DepartTime);
-                                    //        //DateTime.TryParseExact(temp_string, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out TEMP_DepartTime);
-                                    //    }
-                                    //    else
-                                    //    {
-                                    //        // Er is al een waarde voor from dus dit is de to.
-                                    //        string x = temp_string;
-                                    //        if (x.Contains("+"))
-                                    //        {
-                                    //            // Next day arrival
-                                    //            x = x.Replace("+", "");
-                                    //            TEMP_FlightNextDays = 1;
-                                    //            TEMP_FlightNextDayArrival = true;
-                                    //        }
-                                    //        // Multiple airport places.
-                                    //        if (Regex.Matches(x, "[A-Z]").Count > 0)
-                                    //        {
-                                    //            //Lette found replace to with different airport
-                                    //            string z = null;
-                                    //            z = Regex.Match(x, "[A-Z]").Groups[0].Value;
-                                    //            var item = Airports.Find(q => q.Letter == z);
-                                    //            TEMP_ToIATA = item.IATA;
-                                    //            x = x.Replace(z, "");
-                                    //        }
-                                    //        DateTime.TryParse(x.Trim(), out TEMP_ArrivalTime);
-                                    //    }
-                                    //}
-                                    //// FlightNumber Parsing
-                                    //if (rgxFlightNumber.IsMatch(temp_string) && !_LufthansaAircraftCode.Contains(temp_string, StringComparer.OrdinalIgnoreCase))
-                                    //{
-                                    //    // Only Main FlightNumber
-                                    //    TEMP_FlightNumber = rgxFlightNumberPri.Match(temp_string).Groups[0].Value;
-
-                                    //    // Code Share flight
-                                    //    if (rgxFlightNumberCodeShare.IsMatch(temp_string))
-                                    //    {
-                                    //        // Code Share Flight
-                                    //        string x = null;
-                                    //        TEMP_FlightCodeShare = true;
-                                    //        x = rgxFlightNumberCodeShare.Match(temp_string).Groups[0].Value;
-                                    //        x = x.Replace("(", "");
-                                    //        x = x.Replace(")", "");
-                                    //        TEMP_FlightOperator = x;
-                                    //    }
-                                    //}             
-                                    
-
-                                    if (TEMP_Aircraftcode != null && TEMP_DurationTime != TimeSpan.MinValue)
-                                    {
-                                        // Aircraft code is gevonden, dit moet nu de vlucht tijd zijn. En dus de laatste waarde in de reeks.                                        
-                                        string TEMP_Airline = null;
-                                        TEMP_Airline = TEMP_FlightNumber.Substring(0, 2);
-
-                                        CIFLights.Add(new CIFLight
-                                        {
-                                            FromIATA = TEMP_FromIATA,
-                                            ToIATA = TEMP_ToIATA,
-                                            FromDate = ValidFrom,
-                                            ToDate = ValidTo,
-                                            ArrivalTime = TEMP_ArrivalTime,
-                                            DepartTime = TEMP_DepartTime,
-                                            FlightAircraft = TEMP_Aircraftcode,
-                                            FlightAirline = TEMP_Airline,
-                                            FlightMonday = TEMP_FlightMonday,
-                                            FlightTuesday = TEMP_FlightTuesday,
-                                            FlightWednesday = TEMP_FlightWednesday,
-                                            FlightThursday = TEMP_FlightThursday,
-                                            FlightFriday = TEMP_FlightFriday,
-                                            FlightSaterday = TEMP_FlightSaterday,
-                                            FlightSunday = TEMP_FlightSunday,
-                                            FlightNumber = TEMP_FlightNumber,
-                                            FlightOperator = TEMP_FlightOperator,
-                                            FlightDuration = TEMP_DurationTime.ToString().Replace("-", ""),
-                                            FlightCodeShare = TEMP_FlightCodeShare,
-                                            FlightNextDayArrival = TEMP_FlightNextDayArrival,
-                                            FlightNextDays = TEMP_FlightNextDays
-                                        });
-                                        // Cleaning All but From and To 
-                                        TEMP_ValidFrom = new DateTime();
-                                        TEMP_ValidTo = new DateTime();
-                                        TEMP_Conversie = 0;
-                                        TEMP_FlightMonday = false;
-                                        TEMP_FlightTuesday = false;
-                                        TEMP_FlightWednesday = false;
-                                        TEMP_FlightThursday = false;
-                                        TEMP_FlightFriday = false;
-                                        TEMP_FlightSaterday = false;
-                                        TEMP_FlightSunday = false;
-                                        TEMP_DepartTime = new DateTime();
-                                        TEMP_ArrivalTime = new DateTime();
-                                        TEMP_FlightNumber = null;
-                                        TEMP_Aircraftcode = null;
-                                        TEMP_DurationTime = TimeSpan.MinValue;
-                                        TEMP_FlightCodeShare = false;
-                                        TEMP_FlightNextDayArrival = false;
-                                        TEMP_FlightNextDays = 0;
-                                        TEMP_FlightOperator = null;
-                                    }
-                                    Console.WriteLine(value);
+                                    }  
                                 }
                             }
                         }
@@ -495,7 +507,61 @@ namespace UnitedTimeTableParser
             file.Close();
 
             //Console.ReadKey();
+            Console.WriteLine("Insert into Database...");
+            for (int i = 0; i < CIFLights.Count; i++) // Loop through List with for)
+            {
+                using (SqlConnection connection = new SqlConnection("Server=(local);Database=CI-Import;Trusted_Connection=True;"))
+                {
+                    using (SqlCommand command = new SqlCommand())
+                    {
+                        command.Connection = connection;            // <== lacking
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.CommandText = "InsertFlight";
+                        command.Parameters.Add(new SqlParameter("@FlightSource", "United"));
+                        command.Parameters.Add(new SqlParameter("@FromIATA", CIFLights[i].FromIATA));
+                        command.Parameters.Add(new SqlParameter("@ToIATA", CIFLights[i].ToIATA));
+                        command.Parameters.Add(new SqlParameter("@FromDate", CIFLights[i].FromDate));
+                        command.Parameters.Add(new SqlParameter("@ToDate", CIFLights[i].ToDate));
+                        command.Parameters.Add(new SqlParameter("@FlightMonday", CIFLights[i].FlightMonday));
+                        command.Parameters.Add(new SqlParameter("@FlightTuesday", CIFLights[i].FlightTuesday));
+                        command.Parameters.Add(new SqlParameter("@FlightWednesday", CIFLights[i].FlightWednesday));
+                        command.Parameters.Add(new SqlParameter("@FlightThursday", CIFLights[i].FlightThursday));
+                        command.Parameters.Add(new SqlParameter("@FlightFriday", CIFLights[i].FlightFriday));
+                        command.Parameters.Add(new SqlParameter("@FlightSaterday", CIFLights[i].FlightSaterday));
+                        command.Parameters.Add(new SqlParameter("@FlightSunday", CIFLights[i].FlightSunday));
+                        command.Parameters.Add(new SqlParameter("@DepartTime", CIFLights[i].DepartTime));
+                        command.Parameters.Add(new SqlParameter("@ArrivalTime", CIFLights[i].ArrivalTime));
+                        command.Parameters.Add(new SqlParameter("@FlightNumber", CIFLights[i].FlightNumber));
+                        command.Parameters.Add(new SqlParameter("@FlightAirline", CIFLights[i].FlightAirline));
+                        command.Parameters.Add(new SqlParameter("@FlightOperator", CIFLights[i].FlightOperator));
+                        command.Parameters.Add(new SqlParameter("@FlightAircraft", CIFLights[i].FlightAircraft));
+                        command.Parameters.Add(new SqlParameter("@FlightCodeShare", CIFLights[i].FlightCodeShare));
+                        command.Parameters.Add(new SqlParameter("@FlightNextDayArrival", CIFLights[i].FlightNextDayArrival));
+                        command.Parameters.Add(new SqlParameter("@FlightDuration", CIFLights[i].FlightDuration));
+                        command.Parameters.Add(new SqlParameter("@FlightNextDays", CIFLights[i].FlightNextDays));
+                        foreach (SqlParameter parameter in command.Parameters)
+                        {
+                            if (parameter.Value == null)
+                            {
+                                parameter.Value = DBNull.Value;
+                            }
+                        }
 
+
+                        try
+                        {
+                            connection.Open();
+                            int recordsAffected = command.ExecuteNonQuery();
+                        }
+
+                        finally
+                        {
+                            connection.Close();
+                        }
+                    }
+                }
+
+            }
 
 
         }
