@@ -13,6 +13,8 @@ using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using System.Data.SqlClient;
 using System.Data;
+using System.IO;
+using System.Net;
 
 namespace UnitedTimeTableParser
 {
@@ -150,13 +152,32 @@ namespace UnitedTimeTableParser
             Regex rgxIATAAirport = new Regex(@"\([A-Z]{3}");
             Regex rgxFlightDaysMonth = new Regex(@"(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)\|(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)$");
             Regex rgxFlightDaysWeek = new Regex(@"(S|-)(S|-)(M|-)(T|-)(W|-)(T|-)(F|-)");
-            Regex rgxdate1 = new Regex(@"(([0-9])|([0-2][0-9])|([3][0-1])) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)");            
+            Regex rgxdate1 = new Regex(@"(([0-9])|([0-2][0-9])|([3][0-1])) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)");
+            Regex rgxdate2 = new Regex(@"(?:(((Jan(uary)?|Ma(r(ch)?|y)|Jul(y)?|Aug(ust)?|Oct(ober)?|Dec(ember)?)\ 31)|((Jan(uary)?|Ma(r(ch)?|y)|Apr(il)?|Ju((ly?)|(ne?))|Aug(ust)?|Oct(ober)?|(Sept|Nov|Dec)(ember)?)\ (0?[1-9]|([12]\d)|30))|(Feb(ruary)?\ (0?[1-9]|1\d|2[0-8]|(29(?=,\ ((1[6-9]|[2-9]\d)(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00)))))))\,\ ((1[6-9]|[2-9]\d)\d{2}))");
             Regex rgxFlightTime = new Regex(@"(([0-9]|0[0-9]|1[0-9]|2[0-3])h)?([0-9]|0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])m");
             Regex rgxTimeZone = new Regex(@"^(?:Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$");
             Regex rgxAircraftCodes = new Regex(string.Join("|", _UnitedAircraftCode), RegexOptions.Compiled);
             Regex rgxFlightDistance = new Regex(@"(\d|,)*\d* mi");
             List<CIFLight> CIFLights = new List<CIFLight> { };
             List<Rectangle> rectangles = new List<Rectangle>();
+
+            Uri url = new Uri("https://www.united.com/CMS/UADocuments/pdfs/timetable.pdf");
+            const string ua = "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)";
+            const string referer = "https://www.united.com/web/en-US/content/travel/wireless/default.aspx";
+            if (File.Exists(path))
+            {
+                WebRequest.DefaultWebProxy = null;
+                using (System.Net.WebClient wc = new WebClient())
+                {
+                    wc.Headers.Add("user-agent", ua);
+                    wc.Headers.Add("Referer", referer);
+                    wc.Proxy = null;
+                    Console.WriteLine("Downloading latest United timetable pdf file...");
+                    wc.DownloadFile(url, path);
+                    Console.WriteLine("Download ready...");
+                }
+            }
+
 
             //rectangles.Add(new Rectangle(x+(j*offset), (y+i*offset), offset, offset));
             float distanceInPixelsFromLeft = 0;
@@ -166,6 +187,13 @@ namespace UnitedTimeTableParser
             // Formaat papaier 
             // Letter		 612x792
             // A4		     595x842
+
+            var firstpage = new Rectangle(
+                        distanceInPixelsFromLeft,
+                        distanceInPixelsFromBottom,
+                        595,
+                        height);
+
             var left = new Rectangle(
                         distanceInPixelsFromLeft,
                         distanceInPixelsFromBottom,
@@ -198,9 +226,30 @@ namespace UnitedTimeTableParser
 
             using (var pdfReader = new PdfReader(path))
             {
-                // Vaststellen valid from to date
-                DateTime ValidFrom = new DateTime(2015, 6, 20);
-                DateTime ValidTo = new DateTime(2015, 7, 18);
+                ITextExtractionStrategy fpstrategy = new SimpleTextExtractionStrategy();
+
+                var fpcurrentText = PdfTextExtractor.GetTextFromPage(
+                    pdfReader,
+                    1,
+                    fpstrategy);
+
+                fpcurrentText =
+                    Encoding.UTF8.GetString(Encoding.Convert(
+                        Encoding.Default,
+                        Encoding.UTF8,
+                        Encoding.Default.GetBytes(fpcurrentText)));
+
+                MatchCollection matches = rgxdate2.Matches(fpcurrentText);
+
+                string validfrom = matches[0].Value;
+                string validto = matches[1].Value;
+
+                string TEMP_PageFromIATA = null;
+                string TEMP_PageToIATA = null;
+
+                DateTime ValidFrom = DateTime.ParseExact(validfrom, "MMMM d, yyyy", ci);
+                DateTime ValidTo = DateTime.ParseExact(validto, "MMMM d, yyyy", ci);
+
 
                 // Vaststellen van Basics
 
