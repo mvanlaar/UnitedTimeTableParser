@@ -588,6 +588,9 @@ namespace UnitedTimeTableParser
                         command.Parameters.Add(new SqlParameter("@FlightNextDayArrival", CIFLights[i].FlightNextDayArrival));
                         command.Parameters.Add(new SqlParameter("@FlightDuration", CIFLights[i].FlightDuration));
                         command.Parameters.Add(new SqlParameter("@FlightNextDays", CIFLights[i].FlightNextDays));
+                        command.Parameters.Add(new SqlParameter("@FlightNonStop", "True"));
+                        command.Parameters.Add(new SqlParameter("@FlightVia", DBNull.Value));
+
                         foreach (SqlParameter parameter in command.Parameters)
                         {
                             if (parameter.Value == null)
